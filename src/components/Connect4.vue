@@ -5,74 +5,81 @@
         {{title}}!
       </h1>
 
+      <p>{{ message }}</p>
       <div v-if="players && players.length">
-        <p>player</p>
-        <select v-model="selectedPlayer">
-          <option :value="null">
-            None
-          </option>
-          <option v-for="player in players" v-bind:value="player">
-            {{ player.username }}
-          </option>
-        </select>
+      <form>
+        <div class="form-group">
+          <label for="playerSelect">En wie ben jij?</label>
+          <select v-model="selectedPlayer" class="form-control" id="playerSelect">
+            <option :value="null">
 
-        <p>opponent</p>
-        <select v-model="selectedOpponent">
-          <option :value="null">
-            None
-          </option>
-          <option v-for="player in players" v-bind:value="player">
-            {{ player.username }}
-          </option>
-        </select>
-      </div>
+            </option>
+            <option v-for="player in players" v-bind:value="player">
+              {{ player.username }}
+            </option>
+          </select>
+        </div>
 
-      <div v-if="selectedPlayer && selectedPlayer.username">
-        <span>Selected player: {{ selectedPlayer.username }}</span>
-      </div>
-      <div v-if="selectedOpponent && selectedOpponent.username">
-        <span>Selected opponent: {{ selectedOpponent.username }}</span>
-      </div>
+        <div v-if="games" class="form-group">
+          <label for="gameSelect">Spellen</label>
+          <select v-model="selectedGame" class="form-control" id="gameSelect">
+            <option :value="null">
 
-      <p>message: <span>{{ message }}</span></p>
+            </option>
+            <option v-for="game in games" v-bind:value="game">
+              {{ game.challenger.username + ' tegen ' + game.opponent.username }}
+              <span v-if="game.winner && game.winner.id === selectedPlayer.id">(Gewonnen!)</span>
+              <span v-if="game.winner && game.winner.id !== selectedPlayer.id">(Verloren)</span>
+            </option>
+          </select>
+        </div>
+        <div class="form-group" v-if="selectedPlayer">
+          <label for="opponentSelect">Nieuw spel</label>
+          <div class="input-group">
+              <select v-model="selectedOpponent" class="form-control" id="opponentSelect">
+                <option :value="null">
 
-      <div v-if="games">
-        <p>game</p>
-        <select v-model="selectedGame">
-          <option :value="null">
-            None
-          </option>
-          <option v-for="game in games" v-bind:value="game">
-            {{ game.id }}
-          </option>
-        </select>
+                </option>
+                <option v-for="player in players" v-bind:value="player">
+                  {{ player.username }}
+                </option>
+              </select>
+            <div class="input-group-append">
+              <button class="form-control btn btn-outline-secondary" type="button" v-on:click="doNewGame()" :disabled="!selectedOpponent">Start een nieuw spel</button>
+            </div>
+          </div>
+        </div>
+      </form>
       </div>
-      <button v-on:click="doNewGame()">start new game</button>
 
       <div v-if="selectedGame && selectedGame.playingField && selectedGame.playingField.places">
-        <span>Selected game: {{ selectedGame.id }}</span>
 
+        <h3>Spel: <span>{{selectedGame.challenger.username + ' tegen ' + selectedGame.opponent.username }}</span></h3>
         <div v-if="winner">
-          <p>Winner: <span>{{ winner.username }}</span></p>
+          <h5>Winnaar: <span>{{ winner.username }}</span></h5>
         </div>
         <br />
-        <button v-on:click="doSurrender()">surrender</button>
         <table style="border: 1px solid yellowgreen">
           <thead>
-          <tr>
-            <th><button v-on:click="doMove(0)">1</button></th>
-            <th><button v-on:click="doMove(1)">1</button></th>
-            <th><button v-on:click="doMove(2)">1</button></th>
-            <th><button v-on:click="doMove(3)">1</button></th>
-            <th><button v-on:click="doMove(4)">1</button></th>
-            <th><button v-on:click="doMove(5)">1</button></th>
-          </tr>
+            <tr>
+              <th v-for="n in 6">
+                <button class="btn" v-on:click="doMove(n-1)"
+                        :disabled="(selectedPlayer.id === selectedGame.challenger.id && selectedGame.playerOnTurn === 2) ||
+                        (selectedPlayer.id === selectedGame.opponent.id && selectedGame.playerOnTurn === 1) ||
+                        (selectedGame.winner)">
+                  {{n}}
+                </button></th>
+            </tr>
           </thead>
 
-          <tr v-for="row in reorderedField">
-            <td style="width:20px; height: 20px" v-for="place in row">{{place}}</td>
-          </tr>
+          <tbody>
+            <tr v-for="row in reorderedField">
+              <td style="width:40px; height: 40px" v-for="place in row" v-bind:class="{'redPlace':(place === 1), 'bluePlace':(place === 2)}"></td>
+            </tr>
+          </tbody>
+
         </table>
+        <button class="btn" v-on:click="doSurrender()">Opgeven</button>
       </div>
     </div>
   </div>
@@ -81,11 +88,11 @@
 <script>
   import axios from 'axios';
   export default {
-    name: 'HelloWorld',
+    name: 'Connect4',
     data() {
       return {
-        title: 'Connect4',
-        message: 'Welcome to Your Vue.js App',
+        title: 'Vier op een rij',
+        message: 'Welkom bij dit klassieke spel!',
         players: [],
         selectedPlayer: '',
         selectedOpponent: '',
@@ -118,18 +125,14 @@
             reordered[i][j] = value;
           });
         });
-        console.debug('field', field, reordered);
         return reordered;
       },
       winner: function () {
         if (!this.selectedGame) {
-          console.debug('nowinner or game', this.selectedGame);
           return null;
         } else if (!this.selectedGame.winner) {
-          console.debug('nowinner', this.selectedGame.winner);
           return null;
         }
-        console.debug('winner', this.selectedGame.winner);
         return this.selectedGame.winner;
       }
     },
@@ -138,8 +141,6 @@
         this.getGames();
       },
       selectedGame: function (game) {
-        console.debug(game);
-        console.debug(game.playingField.places);
       }
     },
     created() {
@@ -149,7 +150,6 @@
       doMove: function (column) {
         let post = axios.post(this.apiRoot + 'games/move/'+ this.selectedGame.id +'/' + column, column);
         post.then(repsonse => {
-          console.debug(repsonse);
           this.getGames();
         }, error => this.error = error);
       },
@@ -159,7 +159,6 @@
         }
         let post = axios.post(this.apiRoot + 'games/surrender/'+ this.selectedGame.id +'/' + this.selectedPlayer.id, null);
         post.then(repsonse => {
-          console.debug(repsonse);
           this.getGames(repsonse.data.id);
         }, error => this.error = error);
       },
@@ -169,12 +168,10 @@
         }
         let post = axios.post(this.apiRoot + 'games/newgame/'+ this.selectedPlayer.id +'/' + this.selectedOpponent.id, null);
         post.then(repsonse => {
-          console.debug(repsonse);
           this.getGames(repsonse.data.id);
         }, error => this.error = error);
       },
       getGames: function (gameIdToSelect = null) {
-        console.debug('get games');
         if (!this.selectedPlayer || !this.selectedPlayer.id) {
           this.games = null;
           return;
@@ -182,7 +179,6 @@
         if (this.selectedGame && !gameIdToSelect) {
           gameIdToSelect = this.selectedGame.id;
         }
-        console.debug(this.selectedPlayer);
 
         axios.get(this.apiRoot + `players/`+this.selectedPlayer.id + '/games')
           .then(response => {
@@ -194,14 +190,12 @@
                 }
               })
             }
-            console.debug(response.data);
           })
           .catch(e => {
             this.errors.push(e);
           })
       },
       getPlayers: function (playerIdToSelect = null) {
-        console.debug('get players');
         if (this.selectedPlayer && !playerIdToSelect) {
           playerIdToSelect = this.selectedPlayer.id;
         }
@@ -241,7 +235,11 @@
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 
-a {
-  color: #42b983;
-}
+
+  .redPlace {
+    background-color: red;
+  }
+  .bluePlace {
+    background-color: blue;
+  }
 </style>
